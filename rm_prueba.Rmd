@@ -17,11 +17,11 @@ subtitle: Work in progress
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# 1. Introudccion
+# 1. Introduction
 
 In this file we show the process to estimate the causal effect from fertility to household wealth. This process has three stages. First, we import the data base and explore it, but also we generate a subset of the data base because women are the group of analysis. Second, all the variable of interest should be created. For instance most of them should be transformed into the correct format. Finally, we show the result according to the model.
 
-# 2. Data Base Generation
+# 2. Data Generation
 
 DHS surveys collect primary data using several types of questionnaires. A household questionnaire is used to collect information on characteristics of the household's dwelling unit, and data related to the height and weight for women and children in the household. It is also used to identify members of the household who are eligible for an individual interview. Eligible respondents are then interviewed using an individual questionnaire.
 
