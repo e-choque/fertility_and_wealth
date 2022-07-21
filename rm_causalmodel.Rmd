@@ -6,7 +6,7 @@ output:
   html_document:
     toc: yes
     toc_float: yes
-    code_download: yes
+    code_download: no
     theme: flatly
   pdf_document:
     toc: yes
