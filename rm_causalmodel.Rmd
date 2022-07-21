@@ -1,7 +1,7 @@
 ---
 title: 'Fertility and Wealth: Causal Evidence for Latin America'
 author: "Edison Choque Sanchez"
-date: "30/06/2022"
+date: "21/07/2022"
 output:
   html_document:
     toc: yes
@@ -38,15 +38,16 @@ library(dplyr)
 library(tidyverse)
 library(sem)
 library(cragg) # for Stock - Yogo test for weak instruments
+library(FactoMineR)
 ```
 
 ## Import data
 
 ```{r include=FALSE}
-setwd("J:/Mi unidad/Consultorias/Gus_Canavire/ProyectoDHS/Data/phase 5")
+setwd("H:/Mi unidad/Consultorias/Gus_Canavire/ProyectoDHS/Data/phase 5")
 dir()
-base_model1 <- read.dta13("base_ir1.DTA")
-base_model2 <- read.dta13("base_ir2.DTA")
+base_ir1 <- read.dta13("base_ir1.DTA")
+base_ir2 <- read.dta13("base_ir2.DTA")
 ```
 
 In order to study specific data. First, we use two databases from 6 Latin American countries. These are Bolivia, Colombia, Republica Dominicana, Guyana, Honduras, and Haiti. We collect the data between 2005 to 2009 according to the phase 5 - DHS program. 
@@ -55,28 +56,28 @@ We develop two econometric models. Both are causal models to measure raising chi
 
 To know the definition for the most of the variables, we suggest downloading the pdf files from the following link: [Files](https://dhsprogram.com/publications/publication-dhsg4-dhs-questionnaires-and-manuals.cfm){target="_blank"}. Once you enter to the link, download two pdf files: DHS-V Recode Manual and DHS-V Recode Map. In both,  you can find more information about the variables and data structure. 
 
-The first econometric model considers the "infertility shock" as the instrument. The second one uses the "twins" variable as an alternative instrument. Most of them are changed to the correct format. We use both the **base_model1** and **base_model2** for the first and second econometric models respectively
+The first econometric model considers the "infertility shock" as the instrument. The second one uses the "twins" variable as an alternative instrument. Most of them are changed to the correct format. We use both the **base_ir1** and **base_ir2** for the first and second econometric models respectively
 
-This presentation is divided into two parts. First, we show the description of the variables. Second, we explain the principal results of the econometrics models.
+This presentation keep on with the third section that shows the description of the variables. The fourth section explains a multiple correspondence analysis. We explain the principal results of the econometrics models in the fifth section. Finally, we present the principal conclusion and recommendations. 
 
-# 1. Description of the Database
+# 3. Description of the Database
 
 ## Model 1: Infertility shock
 
 First, we explore the dependent variable which is the Wealth index factor score
  
 ```{r descriptive 1.1}
-hist(base_model1$score_wi)
-summary(base_model1$score_wi)
+hist(base_ir1$score_wi)
+summary(base_ir1$score_wi)
 ```
 
 Second, we describe the endogenous variable that is fertility, which is the number of living children. But also, we can define this variable in different ways. See some of these options:
 
 ```{r descriptive 1.2}
-table(base_model1$children_home) # Number of children living at home 
-table(base_model1$living_children) # Number of living children
-table(base_model1$v137) #v137 -Number of children 5 and under
-table(base_model1$v219) # v219 -Living children + current preg
+table(base_ir1$children_home) # Number of children living at home 
+table(base_ir1$living_children) # Number of living children
+table(base_ir1$v137) #v137 -Number of children 5 and under
+table(base_ir1$v219) # v219 -Living children + current preg
 ```
 
 Third, we describe the instrument for the endogenous variable. This instrument is defined in two ways. Both are self-declarations of infertility for women.
@@ -88,18 +89,18 @@ b) when the question is: Fertility preference, and the answer is: Declared infec
 According to these results, on average the number of living children in the infertile group is lower than the fertile group, so that makes sense.
 
 ```{r descriptive 1.3}
-base_model1 %>% group_by(infertility1) %>%  summarise(mean = mean(living_children), n = n())
-base_model1 %>% group_by(infertility2) %>%  summarise(mean = mean(living_children), n = n())
-base_model1 %>% group_by(instrument) %>%  summarise(mean = mean(living_children), n = n()) #instrument is defined as infertility1 or  infertility2
+base_ir1 %>% group_by(infertility1) %>%  summarise(mean = mean(living_children), n = n())
+base_ir1 %>% group_by(infertility2) %>%  summarise(mean = mean(living_children), n = n())
+base_ir1 %>% group_by(instrument) %>%  summarise(mean = mean(living_children), n = n()) #instrument is defined as infertility1 or  infertility2
 ```
 
 Finally, we describe the rest of the variables for model 1.
 
 ```{r descriptive 1.4}
-summary(base_model1$v012) #V012 - Current age - respondent
-summary(base_model1$v212) # v212 Age of respondent at 1st birth
-summary(base_model1$v133) # v133 - Education in single years
-table(base_model1$urban) # v025 - Type of place of residence
+summary(base_ir1$v012) #V012 - Current age - respondent
+summary(base_ir1$v212) # v212 Age of respondent at 1st birth
+summary(base_ir1$v133) # v133 - Education in single years
+table(base_ir1$urban) # v025 - Type of place of residence
 ```
 
 ### Model 2: Twins 
@@ -111,20 +112,76 @@ Now we can describe the instrumental variable for model 2. This is defined as *t
 In the next chunk, we show a summary table for the mean of the number of children living at home according to mothers who had twins and the ones that did not. The result shows that this mean is lower for the mothers who never had twins than the ones who did, so that makes sense.
 
 ```{r descriptive 2.1}
-base_model2 %>% group_by(twin) %>%  summarise(mean = mean(children_home), n = n())
+base_ir2 %>% group_by(twin) %>%  summarise(mean = mean(children_home), n = n())
 ```
 
 Finally, we present the description for the rest of the variables for model 2.
 
 ```{r}
-summary(base_model2$max_agechildren) # Maximun age of the children at home
-summary(base_model2$v012) #V012 - Current age - respondent
-summary(base_model2$v212) # v212 Age of respondent at 1st birth
-summary(base_model2$v133) # v133 - Education in single years
-table(base_model2$urban) # 1 urbano - 0 rural
+summary(base_ir2$max_agechildren) # Maximun age of the children at home
+summary(base_ir2$v012) #V012 - Current age - respondent
+summary(base_ir2$v212) # v212 Age of respondent at 1st birth
+summary(base_ir2$v133) # v133 - Education in single years
+table(base_ir2$urban) # 1 urbano - 0 rural
 ```
 
-# 4. Econometrics Models
+# 4. Multiple Correpondence Analysis
+
+This section shows the application of Multiple Correspondence Analysis (MCA) to know the relationship among five categorical variables. These variables are: children_cat, wealth index, residence (rural or urban), country and education level. 
+
+Here a breave description of this variables:
+
+```{r}
+#Data base generation
+vv <- names(base_ir1)[c(66,30,64, 2, 9)]
+t2 <- base_ir1 %>% select(all_of(vv))
+table(t2$children_categ)
+table(t2$v190) # wealth index
+table(t2$urban)
+table(t2$v000)
+table(t2$v106) #education level
+```
+
+
+To make a graph analysis, we use the FactoMineR library in R created by Husson, F., Le, S. and Pages, J. (2010).
+Before to present the graph, it is important to add labels to the data *t2* as follows:
+```{r}
+#add labels to data
+t2$children_categ[t2$children_categ==0]="no children"
+t2$children_categ[t2$children_categ==1]="1 child"
+t2$children_categ[t2$children_categ==2]="2 children"
+t2$children_categ[t2$children_categ==3]="3 children"
+t2$children_categ[t2$children_categ==4]="4 children"
+t2$children_categ[t2$children_categ==5]="more 5 children"
+
+t2$v190[t2$v190==1]="Poorest"
+t2$v190[t2$v190==2]="Poorer"
+t2$v190[t2$v190==3]="Middle"
+t2$v190[t2$v190==4]="Richer"
+t2$v190[t2$v190==5]="Richest"
+
+t2$urban[t2$urban==1]="urbano"
+t2$urban[t2$urban==0]="rural"
+
+t2$v106[t2$v106==0]="No education"
+t2$v106[t2$v106==1]="Primary"
+t2$v106[t2$v106==2]="Secondary"
+t2$v106[t2$v106==3]="Higher"
+```
+
+Now, we can show the principal graph to study the MCA.
+```{r}
+model_mca <- MCA(t2[,c("children_categ", "v190", "urban", "v000", "v106")])
+```
+
+The graph should be interpreted according to the punctuated axes. It can be interpreted in two ways. First, if two o more variables are close, it means that a correlation. Second, if this variables are far from the origin, we can assume a strong correlation. 
+
+As we can see, the is a strong correlation between Richest people and Higher education. We can see that it is also close to the category *no children*. Also, the category of richest is correlated with the category of *1 child and urbano*. .
+
+if we see countries, the is a correlation between *Haiti and women with no education*. Also, we can see *poorer people and primary education*. 
+
+
+# 5. Econometrics Models
 
 ## Model 1: Infertility shock
 
@@ -144,7 +201,7 @@ The covariates were defined as follow:
  - urban: the responded live in urban area
  
 ```{r}
-model_a1 <- lm(score_wi ~ living_children + v012 + v133 + v212 + urban, data = base_model1)
+model_a1 <- lm(score_wi ~ living_children + v012 + v133 + v212 + urban, data = base_ir1)
 summary(model_a1)
 confint(model_a1)
 ```
@@ -153,14 +210,14 @@ For the model_a1, we do not consider any instrument, so it will be useful to com
 
 ```{r}
 model_a2 <- tsls(score_wi~ living_children + v012 + v133 + v212 + urban, 
-                 ~ instrument + v012 + v133 + v212 + urban, data = base_model1)
+                 ~ instrument + v012 + v133 + v212 + urban, data = base_ir1)
 summary(model_a2)
 confint(model_a2)
 ```
 
 ```{r}
 model_a3 <- tsls(score_wi~ living_children + v012 + v133 + v212, 
-                 ~ instrument + v012 + v133 + v212, data = base_model1)
+                 ~ instrument + v012 + v133 + v212, data = base_ir1)
 summary(model_a3)
 confint(model_a3)
 ```
@@ -187,7 +244,7 @@ The covariates were defined as follow:
  
 ```{r}
 model_b1 <- lm(score_wi ~ children_home + v012 + v133 + v212 + urban, 
-               data = base_model2)
+               data = base_ir2)
 summary(model_b1)
 confint(model_b1)
 ```
@@ -196,7 +253,7 @@ For the model_b1, we do not consider any instrument, so it will be useful to com
 
 ```{r}
 model_b2 <- tsls(score_wi~ children_home + v012 + v133 + v212  + urban, 
-                 ~ twin + v012 + v133 + v212  + urban , data = base_model2)
+                 ~ twin + v012 + v133 + v212  + urban , data = base_ir2)
 summary(model_b2)
 confint(model_b2)
 ```
@@ -205,7 +262,7 @@ The principal result shows that the casual effect from fertility over the score 
 
 ```{r}
 model_b3 <- tsls(score_wi~ children_home + v012 + v212, 
-                 ~ twin + v012 + v212 , data = base_model2)
+                 ~ twin + v012 + v212 , data = base_ir2)
 summary(model_b3)
 confint(model_b3)
 ```
