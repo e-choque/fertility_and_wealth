@@ -1,0 +1,328 @@
+---
+title: 'Fertility and Wealth: Causal Evidence for Latin America'
+author: "Edison Choque Sanchez"
+date: "30/07/2022"
+output:
+  html_document:
+    toc: yes
+    toc_float: yes
+    code_download: no
+    theme: flatly
+  pdf_document:
+    toc: yes
+subtitle: Work in progress
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. Introduction
+
+In this file we show the process to estimate the causal effect from fertility to household wealth. This process has three stages. First, we import the data base and explore it, but also we generate a subset of the data base because women are the group of analysis. Second, all the variable of interest should be created. For instance most of them should be transformed into the correct format. Finally, we show the result according to the model.
+
+# 2. DHS program data
+
+DHS surveys collect primary data using several types of questionnaires. A household questionnaire is used to collect information on characteristics of the household's dwelling unit, and data related to the height and weight for women and children in the household. It is also used to identify members of the household who are eligible for an individual interview. Eligible respondents are then interviewed using an individual questionnaire.
+
+In a majority of DHS surveys eligible individuals include women of reproductive age (15-49) and men age 15-59, or in some cases 15-54. In some countries only women are interviewed. Individual questionnaires include information on fertility, family planning and maternal and child health.
+
+We use the individual record data. It mean that all women between 15 - 49 years old were interviewed. You can visit the following website to know about DHS program and data. 
+[DHS program](https://dhsprogram.com/data/Getting-Started.cfm){target="_blank"}
+
+```{r include=FALSE}
+library(readstata13)
+library(survey)
+library(srvyr)
+library(dplyr)
+library(tidyverse)
+library(sjPlot) #html table results
+library(sjmisc)
+library(sjlabelled)
+library(AER) # Ivreg
+library(knitr) #to create frecuency tables
+library(mlogit)
+library(summarytools)
+```
+
+## Loading data
+
+```{r}
+setwd("I:/Mi unidad/Consultorias/Gus_Canavire/ProyectoDHS")
+dir()
+load("everything.Rdata")
+```
+
+In order to study specific data. First, we use two databases from 6 Latin American countries. These are Bolivia, Colombia, Republica Dominicana, Guyana, Honduras, and Haiti. This data is collected between 2005 to 2009 according to the phase 5 - DHS program. 
+
+We develop three econometrics models. Two are causal models to measure raising children's impact on household wealth. And the last one is the multinomial probit model. 
+
+To know the definition for the most of the variables, we suggest downloading the pdf files from the following link: [Files](https://dhsprogram.com/publications/publication-dhsg4-dhs-questionnaires-and-manuals.cfm){target="_blank"}. Once you enter to the link, download two pdf files: DHS-V Recode Manual and DHS-V Recode Map. In both,  you can find more information about the variables and data structure. 
+
+The first econometric model considers the "infertility shock" as the instrument. The second one uses the "twins" variable as an alternative instrument. We use both the **base_ir1** and **base_ir2** for the first and second econometric models respectively. Also, we use the **base_ir3** for the multinomial probit. 
+
+This presentation keeps on with the third section which shows the description of the variables. We explain the principal results of the econometrics models in the fourth section. Finally, we present the principal conclusion and recommendations. 
+
+# 3. Description of the Database
+
+## Model 1: Infertility shock
+
+In this model, the outcome/dependent variable is the wealth index score and the endogenous variable is the total number of children ever born. The database  considers women with o without children.
+
+First, we explore the dependent variable which is the Wealth index factor score:
+ 
+```{r descriptive 1.1}
+hist(base_ir1$score_wi)
+quantile(base_ir1$score_wi)
+summary(base_ir1$score_wi)
+```
+
+Second, we describe the endogenous variable that is fertility, which is the number of living children. But also, we can define this variable in different ways. See some of these options:
+
+```{r descriptive 1.2}
+#All Sample
+summarytools::freq(base_ir1$total_children) # Number of children ever born
+```
+
+Third, we describe the instrument for the endogenous variable. This instrument is defined in two ways. Both are self-declarations of infertility for women.
+
+a) when the question is: Main reason not to use meth, and the answer is Subfecund, infecund (infertility1).
+
+b) when the question is: Fertility preference, and the answer is: Declared infecund
+(infertility2).
+
+According to these results, on average the number of living children in the infertile group is lower than the fertile group, so that makes sense.
+
+```{r descriptive 1.3}
+base_ir1 %>% group_by(infertility1) %>%  summarise(mean = mean(total_children), n = n()) #total sample
+base_ir1 %>% group_by(infertility2) %>%  summarise(mean = mean(total_children), n = n())#total sample
+#instrument is defined as infertility1 or  infertility2
+#Bolivia
+base_ir1 %>% filter(v000=="BO5") %>% group_by(age_group,instrument) %>%  summarise(mean = mean(total_children), n = n()) 
+#Colombia
+base_ir1 %>% filter(v000=="CO4") %>% group_by(age_group,instrument) %>%  summarise(mean = mean(total_children), n = n()) 
+#Republica Dominicana
+base_ir1 %>% filter(v000=="DR5") %>% group_by(age_group,instrument) %>%  summarise(mean = mean(total_children), n = n()) 
+#Guyana
+base_ir1 %>% filter(v000=="GY5") %>% group_by(age_group,instrument) %>%  summarise(mean = mean(total_children), n = n()) 
+#Honduras
+base_ir1 %>% filter(v000=="HN5") %>% group_by(age_group,instrument) %>%  summarise(mean = mean(total_children), n = n()) 
+#Haiti
+base_ir1 %>% filter(v000=="HT5") %>% group_by(age_group,instrument) %>%  summarise(mean = mean(total_children), n = n()) 
+```
+
+Finally, we describe the rest of the variables for model 1.
+
+```{r descriptive 1.4}
+summary(base_ir1$age) # Current age - respondent
+summary(base_ir1$years_education) #  Education in single years
+table(base_ir1$urban) # Type of place of residence
+```
+
+## Model 2: Twins 
+
+In this econometric model, the outcome variable is the same as in model 1. Also, the endogenous variable is the same. But in this case, the database changed because now we consider women with equal or more than one child. 
+
+Now, we can describe the instrumental variable for model 2. This is defined as *twin*. We assume that mothers with the experience of having twins have to raise extra children. That is why it works as a good instrument to measure the causal effect. 
+
+In the next chunk, we show a summary table for the mean of the number of total children according to mothers who had twins and the ones that did not. The result shows that this average is lower for the mothers who never had twins than the ones who did, so that makes sense.
+
+```{r descriptive 2.1}
+#Bolivia
+base_ir2 %>% filter(v000=="BO5") %>% group_by(twin) %>%  summarise(mean = mean(total_children), n = n())
+#Colombia
+base_ir2 %>% filter(v000=="CO4") %>% group_by(twin) %>%  summarise(mean = mean(total_children), n = n())
+#Rep. Dominicana
+base_ir2 %>% filter(v000=="DR5") %>% group_by(twin) %>%  summarise(mean = mean(total_children), n = n())
+#Guyana
+base_ir2 %>% filter(v000=="GY5") %>% group_by(twin) %>%  summarise(mean = mean(total_children), n = n())
+#Honduras
+base_ir2 %>% filter(v000=="HN5") %>% group_by(twin) %>%  summarise(mean = mean(total_children), n = n())
+#Haiti
+base_ir2 %>% filter(v000=="HT5") %>% group_by(twin) %>%  summarise(mean = mean(total_children), n = n())
+```
+
+Finally, we present the description for the rest of the variables for model 2.
+
+```{r}
+summary(base_ir2$age) #Current age - respondent
+summary(base_ir2$age_firstbirth) # Age of respondent at 1st birth
+summary(base_ir2$years_education) # Education in single years
+summarytools::freq(base_ir2$urban) # 1 urbano - 0 rural
+```
+
+
+# 4. Econometrics Models
+
+## Model 1: Infertility shock
+
+Definition of the dependent variables:
+
+ - score_wi: Wealth index factor score standardized between 0 - 100
+ 
+Definition of the endogenous variables:
+ 
+ - total_children: total children ever born
+ 
+Definition of the instrument:
+
+ - instrument: infertility1 or infertility2 defined above
+ 
+Control variables are defined as follow:
+
+ - age: Current age - respondent
+ - year_education: Education in single years
+ - urban: the responded live in urban area
+ 
+```{r}
+m1_iv1w_bo5 <- ivreg(score_wi~ total_children + age + years_education + urban 
+                    |instrument + age + years_education + urban, data = base_ir1,
+                    subset = v000 %in% "BO5", weights = v005)
+
+m1_iv1w_co4<- ivreg(score_wi~ total_children + age + years_education + urban 
+                   |instrument + age + years_education + urban, data = base_ir1,
+                subset = v000 %in% "CO4", weights = v005)
+
+m1_iv1w_dr5<- ivreg(score_wi~ total_children + age + years_education + urban 
+                   |instrument + age + years_education + urban, data = base_ir1,
+                subset = v000 %in% "DR5", weights = v005)
+
+m1_iv1w_gy5 <- ivreg(score_wi~ total_children + age + years_education + urban 
+                    |instrument + age + years_education + urban, data = base_ir1,
+                subset = v000 %in% "GY5", weights = v005)
+
+m1_iv1w_hn5 <- ivreg(score_wi~ total_children + age + years_education + urban 
+                    |instrument + age + years_education + urban, data = base_ir1,
+                subset = v000 %in% "HN5", weights = v005)
+
+m1_iv1w_ht5 <- ivreg(score_wi~ total_children + age + years_education + urban 
+                    |instrument + age + years_education + urban, data = base_ir1,
+                subset = v000 %in% "HT5", weights = v005)
+
+tab_model(m1_iv1w_bo5, m1_iv1w_co4, m1_iv1w_dr5,m1_iv1w_gy5,m1_iv1w_hn5,m1_iv1w_ht5
+          ,collapse.ci = TRUE, p.style = "stars",dv.labels = c("Bolivia", "Colombia", 
+            "Rep.Dominicana", "Guyana","Honduras","Haiti"))
+```
+
+
+The principal results show that the causal effect from fertility to the score of wealth index in negative for Bolivia, Colombia, Rep. Dominicana and Honduras. These coeficientes are between 0.88 and 5.09 for each child. Also, we can see that these results are statistically significant. 
+
+It is important to notice that the causal effect from the *total_children* variable is small in average for each children, except for Colombia. Moreover, notice that we applied the sample weigth for each sample separately in order to have a country implication for the results. 
+
+According to the test for weak instrument, we reject the null hypothesis for the countries we mention before. It means that the instruments are good enough to predict a causal effect. 
+
+```{r}
+#Endogeneity test 
+summary(m1_iv1w_bo5, diagnostics=TRUE)$diagnostics
+summary(m1_iv1w_co4, diagnostics=TRUE)$diagnostics
+summary(m1_iv1w_dr5, diagnostics=TRUE)$diagnostics
+summary(m1_iv1w_gy5, diagnostics=TRUE)$diagnostics
+summary(m1_iv1w_hn5, diagnostics=TRUE)$diagnostics
+summary(m1_iv1w_ht5, diagnostics=TRUE)$diagnostics
+```
+
+
+## Model 2: Twins
+
+Definition of the dependent variables:
+
+ - score_wi: Wealth index factor score standardized
+ 
+Definition of the endogenous variables:
+ 
+ - total_children: total children ever born
+ 
+Control variables are defined as follow:
+
+ - age: Current age - respondent
+ - age_firstbirth: Age of respondent at 1st birth
+ - year_education: Education in single years
+ - urban: the responded live in urban area
+ 
+```{r}
+m2_iv1w_bo5 <- ivreg(score_wi~ total_children + age + age_firstbirth + years_education + urban 
+                    |twin + age+ age_firstbirth + years_education + urban, data = base_ir2,
+                    subset = v000 %in% "BO5", weights = v005)
+
+m2_iv1w_co4<- ivreg(score_wi~ total_children + age + age_firstbirth + years_education + urban 
+                   |twin + age+ age_firstbirth + years_education + urban, data = base_ir2,
+                   subset = v000 %in% "CO4", weights = v005)
+
+m2_iv1w_dr5<- ivreg(score_wi~ total_children + age+ age_firstbirth + years_education + urban 
+                   |twin + age+ age_firstbirth + years_education + urban, data = base_ir2,
+                   subset = v000 %in% "DR5", weights = v005)
+
+m2_iv1w_gy5 <- ivreg(score_wi~ total_children + age+ age_firstbirth + years_education + urban 
+                    |twin + age+ age_firstbirth + years_education + urban, data = base_ir2,
+                    subset = v000 %in% "GY5", weights = v005)
+
+m2_iv1w_hn5 <- ivreg(score_wi~ total_children + age+ age_firstbirth + years_education + urban 
+                    |twin + age+ age_firstbirth + years_education + urban, data = base_ir2,
+                    subset = v000 %in% "HN5", weights = v005)
+
+m2_iv1w_ht5 <- ivreg(score_wi~ total_children + age+ age_firstbirth + years_education + urban 
+                    |twin + age+ age_firstbirth + years_education + urban, data = base_ir2,
+                    subset = v000 %in% "HT5", weights = v005)
+
+tab_model(m2_iv1w_bo5, m2_iv1w_co4, m2_iv1w_dr5,m2_iv1w_gy5,m2_iv1w_hn5,m2_iv1w_ht5
+          ,collapse.ci = TRUE, p.style = "stars",dv.labels = c("Bolivia", "Colombia", 
+                                                               "Rep.Dominicana", "Guyana","Honduras","Haiti"))
+```
+
+The principal result shows that the casual effect from fertility over the score of wealth index is statistically significant for the Colombia, Rep. Dominicana, Honduras y Haiti. Again, Colombia has the biggest impact related to others countries. But still the impacts, in general, are small, similar to the marginal causal effects that we found above for the model 1. 
+
+According to the test for weak instrument, we reject the null hypothesis for the countries we mention before. It means that the instruments are good enough to predict a causal effect. 
+
+```{r}
+#Endogeneity test 
+summary(m2_iv1w_bo5, diagnostics=TRUE)$diagnostics
+summary(m2_iv1w_co4, diagnostics=TRUE)$diagnostics
+summary(m2_iv1w_dr5, diagnostics=TRUE)$diagnostics
+summary(m2_iv1w_gy5, diagnostics=TRUE)$diagnostics
+summary(m2_iv1w_hn5, diagnostics=TRUE)$diagnostics
+summary(m2_iv1w_ht5, diagnostics=TRUE)$diagnostics
+
+```
+
+## Model 3: Multinomial probit 
+
+In this section, we estimate a multinomial probit in order to compare the results. This model evaluate the odd ratio of the probability of being poorest, poor, richer, richest in comparison to belong to the category of *middle*. Here are the results. 
+
+```{r}
+m3_logit_bo5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "BO5",  weights = v005)
+
+m3_logit_co4 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "CO4",  weights = v005)
+m3_logit_dr5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "DR5",  weights = v005)
+m3_logit_gy5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "GY5",  weights = v005)
+m3_logit_hn5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "HN5",  weights = v005)
+m3_logit_ht5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "HT5",  weights = v005)
+
+tab_model(m3_logit_bo5, m3_logit_co4, m3_logit_dr5,m3_logit_gy5,m3_logit_hn5,m3_logit_ht5
+          ,collapse.ci = TRUE, p.style = "stars",dv.labels = c("Bolivia", "Colombia", 
+                                                               "Rep.Dominicana", "Guyana","Honduras","Haiti"))
+```
+
+Lets focus in the interpretation for the variable *total children*. Then, if the number of children increase, the is mother is more likely to be poorest or poor because the odd ratio is higher than 1 for all the countries. Also, these results are statistically significant. On the order hand, the mother is less likely to be richer o richest if the number of children increase. 
+For this excersice, we use the base_ir2 that was used for the model 2. Then, we are considering all women that had al least one child.  
+
+# 5. Discussion and Conclusions
+
+The causal effect from fertility over the score of wealth index is negative for the model 1 and model 2. But differ among countries. So, we can conclude  that the marginal causal effect is statistically significant, but this is small. Why?
+
+We think that the difficulty of interpreting these impacts is related to the meaning of the standardized wealth index scores. If we remember the categorical expression of the wealth index, it shows 5 types: poorest, poor, middle, richer, and richest. So according to our results, For instance Reducing by 2 points on a scale between 0 -100 means passing from middle to poor category?
+
+However, in the results from model 3, it is clear the direction of the probability for the wealth index if the number of children increases. So, we can understand that the causal effect we find is related to this interpretation. In order words, there is a causal effect of fertility over household wealth. 
+
+There are three aspect to consider in order to improve this preliminary results: 
+ 
+ - We should consider the test for the external validation like Hansen test
+ - We can use a restriction for the maximum age of the children living. 
+ - We can consider other control variables like education of husbands and others. 
+ - We can consider other outcome like participation in labor market
+
