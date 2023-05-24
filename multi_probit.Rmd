@@ -1,0 +1,41 @@
+---
+title: "Multinomial probit"
+author: "Edison Choque-Sanchez"
+date: "2023-05-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Model 3: Multinomial probit
+
+In this section, we estimate a multinomial probit in order to compare the results. This model evaluate the odd ratio of the probability of being poorest, poor, richer, richest in comparison to belong to the category of *middle*. Here are the results.
+
+### Model 4.5
+
+```{r include=FALSE}
+m3_logit_bo5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "BO5",  weights = v005)
+
+m3_logit_co4 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "CO4",  weights = v005)
+m3_logit_dr5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "DR5",  weights = v005)
+m3_logit_gy5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "GY5",  weights = v005)
+m3_logit_hn5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "HN5",  weights = v005)
+m3_logit_ht5 <- mlogit(wealth_index~1|total_children + age + years_education + urban, reflevel = "Middle",
+                       data = base_ir3, subset = v000 %in% "HT5",  weights = v005)
+
+stargazer(m3_logit_bo5, m3_logit_co4, m3_logit_dr5)
+stargazer(m3_logit_gy5,m3_logit_hn5,m3_logit_ht5)
+```
+
+Lets focus in the interpretation for the variable *total children*. Then, if the number of children increase, the is mother is more likely to be poorest or poor because the odd ratio is higher than 1 for all the countries. Also, these results are statistically significant. On the order hand, the mother is less likely to be richer o richest if the number of children increase. For this excersice, we use the base_ir2 that was used for the model 2. Then, we are considering all women that had al least one child.
+
+
+
+

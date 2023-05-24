@@ -1,0 +1,197 @@
+---
+title: "multiple"
+author: "Edison Choque Sanchez"
+date: "2023-05-10"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+install.packages("rlang")
+library(rlang)
+Sys.which("python")
+#mklink "C:\python.exe" "C:\\Users\\User\\AppData\\Local\\MICROS~1\\WINDOW~1\\python.exe"
+```
+
+```{r}
+library(ca)
+library(fastDummies)
+library(FactoMineR)
+library(dplyr)
+library(tidyverse)
+library(Hmisc)
+```
+
+#New Variables 
+```{r}
+base_ir1$children_cat<- recode(base_ir1$living_children, `0`=0L, `1`=1L, `2`=2L, 
+                                  `3`=3L, `4`=4L, `5`=5L, `6`=5L, `7`=5L, `8`=5L,
+                                  `9`=5L, `10`=5L,`11`=5L,
+                                  `12`=5L, `13`=5L, `14`=5L, `15`=5L, `16`=5L, 
+                                  `17`=5L, `18`=5L )
+table(base_ir1$children_cat)
+```
+
+# MCA
+```{r}
+#Data base generation
+varlabel(htir, var.name = "wealth_index")
+which(colnames(base_ir1) == "v106")
+
+vv <- names(base_ir1)[c(89,85,35,2,12)] # choose: children_cat-89, wealth_index-35, urban-85, pais-2 and education-12
+
+t2 <- base_ir1 %>% select(all_of(vv))
+
+#Description
+table(base_ir1[, vv])
+head(base_ir1[, vv])
+
+N <- dummy_cols(t2,vv) # new N, remember the first exercise 
+N
+N <- N[, -c(1:3)] # remove the first 3 columns
+
+#Check if any column is completed by ceros
+apply(N, 2,sum) # no problem
+```
+
+```{r}
+# step 0 
+n <- sum(N)
+n/3 #equivalent to number of observations
+P <- N/n
+P <- as.matrix(P)
+rr <- margin.table(P,1)
+cc <- margin.table(P,2)
+S <- diag(rr^(-0.5))%*%(P-rr%*%t(cc))%*%diag(cc^(-0.5)) # error cannot allocate vector of size 34.5 Gb
+u <- svd(S)$u #svd que hace? es una descomposicion 
+v <- svd(S)$v
+Da <- diag(svd(S)$d)
+```
+
+
+```{r}
+# Using library(FactoMineR)
+data(N)
+names(t2)
+summary(t2)
+#add labels to data
+t2$children_cat[t2$children_cat==0]="0 C"
+t2$children_cat[t2$children_cat==1]="1 C"
+t2$children_cat[t2$children_cat==2]="2 C"
+t2$children_cat[t2$children_cat==3]="3 C"
+t2$children_cat[t2$children_cat==4]="4 C"
+t2$children_cat[t2$children_cat==5]=">5 C"
+
+# Now, we use wealth_index
+#t2$v190[t2$v190==1]="Poorest"
+#t2$v190[t2$v190==2]="Poorer"
+#t2$v190[t2$v190==3]="Middle"
+#t2$v190[t2$v190==4]="Richer"
+#t2$v190[t2$v190==5]="Richest"
+
+t2$urban[t2$urban==1]="urbano"
+t2$urban[t2$urban==0]="rural"
+
+t2$v106[t2$v106==0]="No education"
+t2$v106[t2$v106==1]="Primary"
+t2$v106[t2$v106==2]="Secondary"
+t2$v106[t2$v106==3]="Higher"
+```
+
+```{r}
+#summarytools::freq(t2$children_cate, cumul=F) #error
+res <-  MCA(t2)
+summary(res, nbelements = Inf) #funtion summary MCA
+summary(res) #funtion summary MCA
+dimdesc(res, axes=1:2, proba=0.05)
+plot(res,label=c("var"), cex=0.7)
+
+# better 
+names(base_ir1)
+t2_a<-filter(t2, v000 == "DR5" | v000== "CO4" | v000== "GY5") # middle high income
+t2_b<-filter(t2, v000== "BO5" | v000== "HN5" | v000=="HT5") # middle low income countries
+
+MCA(t2_a[,c("children_cat", "wealth_index", "urban", "v106")])
+MCA(t2_b[,c("children_cat", "wealth_index", "urban", "v106")])
+
+MCA(t2_a[,c("children_cat", "wealth_index")])
+MCA(t2_b[,c("children_cat", "wealth_index")])
+```
+
+# CA basic
+```{r}
+ll <- attributes(base_ir1)
+ll$var.labels
+t1 <- base_ir1 %>% select(89,35,2)  %>% table()
+t1
+# Step 0: see if both variables are correlated o related 
+# test - chi square 
+chisq.test(t1) # H0 : independence 
+addmargins(t1,c(1,2))
+ff <- margin.table(t1, 1)
+cc <- margin.table(t1, 2)
+ff
+cc
+n <- sum(ff)
+n
+ee <- (ff%*%t(cc))/n
+ee
+
+#Step 1 
+N <- t1
+P <- N/n
+P
+sum(P)
+addmargins(P, c(1,2))
+rr <- margin.table(P,1)
+cc <- margin.table(P,2)
+rr
+cc
+Dr <- diag(rr)
+Dc <- diag(cc)
+
+S <- diag(rr^(-0.5))%*%(P-rr%*%t(cc))%*%diag(cc^(-0.5)) # P-rr%*%t(cc) es Observado - esperado
+S
+#step 2
+u <- svd(S)$u #svd que hace?
+v <- svd(S)$v
+Da <- diag(svd(S)$d)
+u # rows
+v # Columns
+Da # equivalent to eigenvalores, pero ahora se conoce como la incercia= varianza de cada dimension
+
+#Step 3 :Coordenadas principales de filas: ver fomula 
+FF <- diag(rr^(-0.5))%*% u %*% Da
+#Step 4 : Coordenadas principales de filas: ver fomula 
+GG <- diag(cc^(-0.5))%*% v %*% Da
+# 
+cumsum(svd(S)$d)/sum(svd(S)$d) # calculate the inercias 
+
+#grafico 1
+plot(FF[,1], FF[,2],type="n", xlim=c(-1,1))
+text(FF[,1], FF[,2], labels=row.names(t1),cex=0.7)
+text(FF[,1], FF[,2], labels=colnames(t1), col="red", cex=0.7)
+```
+
+
+##Ca 
+```{r}
+##### using library ca
+t1_a<-filter(base_ir1, v000 == "DR5" | v000== "CO4" | v000== "GY5") 
+t1_b<-filter(base_ir1, v000== "BO5" | v000== "HN5" | v000=="HT5") # middle low income
+
+which(colnames(t1_b) == "wealth_index")
+which(colnames(t1_b) == "children_cat")
+
+t1 <- t1_a %>% select(89,35)  %>% table()
+t1 <- t1_b %>% select(89,35)  %>% table()
+
+N = t1
+
+ca(N)
+plot(ca(N))
+```
+
