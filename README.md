@@ -1,10 +1,3 @@
-# Fertility and Wealth. A causal evidence for Latin American Countries
-This article uses an IV regression to find a causal association between fertility
-and household wealth in six Latin American countries. We use the Demographic
-Household Survey (DHS) database available for two periods of recollections (2005 to 2009 and 2010 to 2013). We applied two econometrics models, each of which
-uses a different instrument. The first uses infertility shock proposed by Aguero and
-Marks (2011) and the second applies the twin’s method developed by ANGRIST and
-EVANS (1998). The results set up that the more the income per capita of the country
-is, the more the fertility negative impact is over the distribution of wealth index. This
-interesting result keeps similar if we apply the econometrics models to the second
-period (2010-2013).
+# We Are Family: The Influence of Household Composition on Wealth
+The shifting demographics in Latin America present several challenges, including an increasing reliance on household wealth. Household composition directly influences the magnitude of this dependence because savings potential is contingent upon the number of dependents. This paper employs instrumental variables in exploring the causal relationship between the number of children and household
+wealth scores in six Latin American countries. Using household surveys for countries across different stages of development, we find that an additional child is associated with a decrease in the household wealth score of 18 to 20 percentage points in high-income Latin American countries. The evidence thus suggests that the negative impacts are more pronounced as countries move upward in development levels.
